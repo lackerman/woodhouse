@@ -1,0 +1,11 @@
+.idea/
+
+# Ignore class files
+project/target/
+target/
+
+# Don't include the generated wave files
+*.wav
+
+# Ignore user-specific config
+src/main/resources/user-specific.conf
