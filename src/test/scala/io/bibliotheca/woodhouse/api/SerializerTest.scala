@@ -1,10 +1,10 @@
 package io.bibliotheca.woodhouse.api
 
-import java.util
-
+import io.bibliotheca.woodhouse.api.TextTranslationJsonProtocol._
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
+import spray.json.enrichString
 
 @RunWith(classOf[JUnitRunner])
 class SerializerTest extends FunSuite {
@@ -24,7 +24,9 @@ class SerializerTest extends FunSuite {
 
     val translated = TextTranslation(Header("error"), None)
 
-    assert(Serializer.deserialize(json, classOf[TextTranslation]).get == translated)
+    val jsonAst = json.parseJson
+    val actual = jsonAst.convertTo[TextTranslation]
+    assert(actual == translated)
   }
 
   test("should deserialize successfully translated speech JSON into a TextTranslation object") {
@@ -49,10 +51,11 @@ class SerializerTest extends FunSuite {
         }
       """
 
-    val results = new util.ArrayList[Result]()
-    results.add(Result("start playing music", "start playing music", 0.8484803))
+    val results = List(Result("start playing music", "start playing music", 0.8484803))
     val translated = TextTranslation(Header("success"), Some(results))
 
-    assert(Serializer.deserialize(json, classOf[TextTranslation]).get == translated)
+    val jsonAst = json.parseJson
+    val actual = jsonAst.convertTo[TextTranslation]
+    assert(actual == translated)
   }
 }

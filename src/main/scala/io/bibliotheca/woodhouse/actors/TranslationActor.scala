@@ -6,18 +6,20 @@ import java.util.UUID
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import io.bibliotheca.woodhouse.Settings
 import io.bibliotheca.woodhouse.actors.Messages.{DetermineIntention, PlayRecording, Translate}
-import io.bibliotheca.woodhouse.api.{AuthToken, HttpClient, Serializer, TextTranslation}
+import io.bibliotheca.woodhouse.api.AuthTokenJsonProtocol._
+import io.bibliotheca.woodhouse.api.TextTranslationJsonProtocol._
+import io.bibliotheca.woodhouse.api.{AuthToken, HttpClient, TextTranslation}
 import org.apache.http.client.entity.UrlEncodedFormEntity
 import org.apache.http.entity.FileEntity
 import org.apache.http.message.BasicNameValuePair
+import spray.json._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 class TranslationActor(speaker: ActorRef, luis: ActorRef) extends Actor with ActorLogging {
-  implicit val ec = ExecutionContext.global
+  private implicit val ec: ExecutionContextExecutor = ExecutionContext.global
 
-  val settings = Settings(context.system)
-  val instanceId = UUID.randomUUID.toString
+  private val settings = Settings(context.system)
 
   override def receive: Receive = {
     case Translate(filename) =>
@@ -25,9 +27,18 @@ class TranslationActor(speaker: ActorRef, luis: ActorRef) extends Actor with Act
       for {
         token <- getAccessToken
         payload <- translate(token, filename)
-        translation <- Serializer.deserialize(payload, classOf[TextTranslation])
+        translation <- convert(payload)
         results <- translation.results
-      } yield luis ! DetermineIntention(results.get(0).lexical)
+      } yield luis ! DetermineIntention(results.head.lexical)
+  }
+
+  private def convert(source: String): Option[TextTranslation] = {
+    try {
+      val jsonAst = source.parseJson
+      Some(jsonAst.convertTo[TextTranslation])
+    } catch {
+      case _: Exception => None
+    }
   }
 
   private def getAccessToken: Option[AuthToken] = {
@@ -41,7 +52,9 @@ class TranslationActor(speaker: ActorRef, luis: ActorRef) extends Actor with Act
       Map.empty, Map.empty, new UrlEncodedFormEntity(body))
 
     results match {
-      case Some(payload) => Serializer.deserialize(payload, classOf[AuthToken])
+      case Some(payload) =>
+        val jsonAst = payload.parseJson
+        Some(jsonAst.convertTo[AuthToken])
       case None => None
     }
   }

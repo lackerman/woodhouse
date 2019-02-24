@@ -1,6 +1,6 @@
 # Scala Speech Understanding playground
 
-Playing with Luis whilst learning Scala
+Playing with Luis whilst learning about AKKA
  - Akka Actors
  - Java Sound API
  - Jackson
